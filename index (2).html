@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plano Reader</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --surface2: #1a1a26;
+      --border: rgba(255,255,255,0.07);
+      --border-hover: rgba(139,92,246,0.4);
+      --purple: #8b5cf6;
+      --purple-light: #a78bfa;
+      --pink: #ec4899;
+      --grad: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+      --grad-subtle: linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(236,72,153,0.08) 100%);
+      --text: #f1f0f5;
+      --text-muted: #6b6880;
+      --text-secondary: #9d9aad;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --radius: 14px;
+      --radius-sm: 8px;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Poppins', sans-serif;
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* GLOW BG */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 400px;
+      background: radial-gradient(ellipse, rgba(139,92,246,0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+
+    /* HEADER */
+    header {
+      margin-bottom: 48px;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--grad);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .logo-text {
+      font-size: 15px;
+      font-weight: 600;
+      background: var(--grad);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.01em;
+    }
+
+    h1 {
+      font-size: clamp(26px, 4vw, 36px);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      margin-bottom: 10px;
+    }
+
+    h1 span {
+      background: var(--grad);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 400;
+    }
+
+    /* CARD */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      margin-bottom: 16px;
+      transition: border-color 0.2s;
+    }
+
+    .card:hover {
+      border-color: rgba(139,92,246,0.2);
+    }
+
+    .card-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    /* UPLOAD */
+    .upload-area {
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 40px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--grad-subtle);
+      position: relative;
+    }
+
+    .upload-area:hover, .upload-area.drag-over {
+      border-color: var(--purple);
+      background: rgba(139,92,246,0.1);
+    }
+
+    .upload-area input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .upload-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .upload-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .upload-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .file-loaded {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      background: rgba(16,185,129,0.08);
+      border: 1px solid rgba(16,185,129,0.2);
+      border-radius: var(--radius-sm);
+      margin-top: 12px;
+    }
+
+    .file-loaded-icon { font-size: 18px; }
+
+    .file-loaded-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--success);
+      flex: 1;
+    }
+
+    .file-loaded-remove {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+
+    .file-loaded-remove:hover { color: var(--danger); }
+
+    /* API KEY */
+    .input-group {
+      margin-bottom: 16px;
+    }
+
+    .input-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .input-field {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-field:focus {
+      border-color: var(--purple);
+    }
+
+    .input-field::placeholder {
+      color: var(--text-muted);
+    }
+
+    /* LINHA ROW */
+    .linha-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .linha-row .input-group {
+      flex: 1;
+      margin-bottom: 0;
+    }
+
+    /* BUTTON */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: var(--radius-sm);
+      font-family: 'Poppins', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--grad);
+      color: white;
+      min-width: 140px;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      opacity: 0.88;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(139,92,246,0.3);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* LOADING */
+    .loading-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 40px;
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--purple);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text {
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    /* RESULT */
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-top: 16px;
+    }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--grad-subtle);
+    }
+
+    .result-title {
+      font-size: 13px;
+      font-weight: 600;
+      background: var(--grad);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .result-copy {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-family: 'Poppins', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .result-copy:hover {
+      border-color: var(--purple);
+      color: var(--purple-light);
+    }
+
+    .result-body {
+      padding: 24px;
+    }
+
+    .result-field {
+      display: flex;
+      gap: 16px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .result-field:last-child {
+      border-bottom: none;
+    }
+
+    .result-key {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      min-width: 200px;
+      padding-top: 2px;
+    }
+
+    .result-val {
+      font-size: 13px;
+      color: var(--text);
+      flex: 1;
+      white-space: pre-wrap;
+    }
+
+    .result-val.highlight {
+      color: var(--purple-light);
+      font-weight: 500;
+    }
+
+    .result-val.warn {
+      color: var(--warning);
+      font-weight: 500;
+    }
+
+    .result-val.danger {
+      color: var(--danger);
+      font-weight: 500;
+    }
+
+    .result-val.success {
+      color: var(--success);
+      font-weight: 500;
+    }
+
+    .alert-bl {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.2);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      margin: 16px 0 8px;
+    }
+
+    .alert-bl-icon { font-size: 16px; flex-shrink: 0; }
+
+    .alert-bl-text {
+      font-size: 12px;
+      color: var(--warning);
+      line-height: 1.5;
+    }
+
+    .raw-response {
+      padding: 24px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      white-space: pre-wrap;
+      line-height: 1.8;
+    }
+
+    /* ERROR */
+    .error-box {
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: var(--radius-sm);
+      padding: 16px 20px;
+      color: var(--danger);
+      font-size: 13px;
+      margin-top: 16px;
+    }
+
+    /* STEPS */
+    .steps {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 32px;
+    }
+
+    .step {
+      flex: 1;
+      height: 3px;
+      border-radius: 2px;
+      background: var(--border);
+      transition: background 0.3s;
+    }
+
+    .step.active {
+      background: var(--grad);
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 600px) {
+      .linha-row { flex-direction: column; }
+      .result-field { flex-direction: column; gap: 4px; }
+      .result-key { min-width: unset; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">📋</div>
+      <span class="logo-text">Plano Reader</span>
+    </div>
+    <h1>Leia o plano.<br /><span>Implemente certo.</span></h1>
+    <p class="subtitle">Suba o plano tático, informe a linha e receba o resumo pronto para implementação.</p>
+  </header>
+
+  <div class="steps" id="steps">
+    <div class="step active" id="step1"></div>
+    <div class="step" id="step2"></div>
+    <div class="step" id="step3"></div>
+  </div>
+
+  <!-- STEP 1: API KEY -->
+  <div class="card">
+    <div class="card-label">01 — Configuração</div>
+    <div class="input-group">
+      <label class="input-label" for="apikey">Chave da API — Google AI Studio</label>
+      <input class="input-field" type="password" id="apikey" placeholder="AIza..." autocomplete="off" />
+    </div>
+  </div>
+
+  <!-- STEP 2: UPLOAD -->
+  <div class="card">
+    <div class="card-label">02 — Plano Tático</div>
+    <div class="upload-area" id="uploadArea">
+      <input type="file" id="fileInput" accept=".xlsx,.xls" />
+      <span class="upload-icon">📂</span>
+      <div class="upload-title">Arraste o arquivo ou clique para selecionar</div>
+      <div class="upload-hint">Aceita .xlsx e .xls</div>
+    </div>
+    <div id="fileLoaded" style="display:none">
+      <div class="file-loaded">
+        <span class="file-loaded-icon">✅</span>
+        <span class="file-loaded-name" id="fileName"></span>
+        <button class="file-loaded-remove" id="removeFile" title="Remover">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: LINHA -->
+  <div class="card">
+    <div class="card-label">03 — Linha para implementar</div>
+    <div class="linha-row">
+      <div class="input-group">
+        <label class="input-label" for="linhaInput">ID da linha (ex: 003)</label>
+        <input class="input-field" type="text" id="linhaInput" placeholder="lreffpat2600101-003 ou só 003" />
+      </div>
+      <button class="btn btn-primary" id="analyzeBtn" disabled>
+        <span id="btnText">Analisar</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="resultWrap"></div>
+
+</div>
+
+<script>
+  let workbookData = null;
+  let fileLoaded = false;
+
+  const apiKeyInput = document.getElementById('apikey');
+  const fileInput = document.getElementById('fileInput');
+  const uploadArea = document.getElementById('uploadArea');
+  const fileLoadedEl = document.getElementById('fileLoaded');
+  const fileNameEl = document.getElementById('fileName');
+  const removeFileBtn = document.getElementById('removeFile');
+  const linhaInput = document.getElementById('linhaInput');
+  const analyzeBtn = document.getElementById('analyzeBtn');
+  const resultWrap = document.getElementById('resultWrap');
+
+  function updateSteps() {
+    const s1 = apiKeyInput.value.trim().length > 0;
+    const s2 = fileLoaded;
+    const s3 = linhaInput.value.trim().length > 0;
+    document.getElementById('step1').classList.toggle('active', s1);
+    document.getElementById('step2').classList.toggle('active', s2);
+    document.getElementById('step3').classList.toggle('active', s3);
+    analyzeBtn.disabled = !(s1 && s2 && s3);
+  }
+
+  apiKeyInput.addEventListener('input', updateSteps);
+  linhaInput.addEventListener('input', updateSteps);
+
+  // Drag and drop
+  uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+  uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+  uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
+
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files[0]) handleFile(e.target.files[0]);
+  });
+
+  removeFileBtn.addEventListener('click', () => {
+    workbookData = null;
+    fileLoaded = false;
+    fileInput.value = '';
+    fileLoadedEl.style.display = 'none';
+    uploadArea.style.display = '';
+    updateSteps();
+  });
+
+  function handleFile(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+        workbookData = wb;
+        fileLoaded = true;
+        fileNameEl.textContent = file.name;
+        fileLoadedEl.style.display = '';
+        uploadArea.style.display = 'none';
+        updateSteps();
+      } catch(err) {
+        showError('Não consegui ler o arquivo. Verifique se é um .xlsx válido.');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function extractPlanData(linhaId) {
+    if (!workbookData) return null;
+
+    // Try DIGITAL DETALHADO sheet
+    const sheetName = workbookData.SheetNames.find(n => n.includes('DIGITAL DETALHADO')) || workbookData.SheetNames[0];
+    const ws = workbookData.Sheets[sheetName];
+    const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false });
+
+    // Find header row (contains "ID Único")
+    let headerRowIdx = -1;
+    for (let i = 0; i < Math.min(data.length, 25); i++) {
+      if (data[i] && data[i].some(c => c && String(c).includes('ID'))) {
+        headerRowIdx = i;
+        break;
+      }
+    }
+    if (headerRowIdx === -1) return { raw: JSON.stringify(data.slice(0,5)) };
+
+    const headers = data[headerRowIdx];
+
+    // Normalize linhaId
+    const searchId = linhaId.toLowerCase().trim();
+
+    // Find matching row
+    let targetRow = null;
+    for (let i = headerRowIdx + 1; i < data.length; i++) {
+      const row = data[i];
+      for (let j = 0; j < row.length; j++) {
+        if (row[j] && String(row[j]).toLowerCase().includes(searchId)) {
+          targetRow = row;
+          break;
+        }
+      }
+      if (targetRow) break;
+    }
+
+    if (!targetRow) return null;
+
+    // Build object
+    const obj = {};
+    headers.forEach((h, i) => {
+      if (h && targetRow[i] !== null && targetRow[i] !== undefined && targetRow[i] !== '') {
+        obj[String(h).trim()] = String(targetRow[i]).trim();
+      }
+    });
+
+    // Also get SEGMENTAÇÃO DIGITAL sheet
+    const segSheetName = workbookData.SheetNames.find(n => n.toUpperCase().includes('SEGMENTA'));
+    let segData = null;
+    if (segSheetName) {
+      const segWs = workbookData.Sheets[segSheetName];
+      segData = XLSX.utils.sheet_to_json(segWs, { header: 1, defval: null, raw: false });
+    }
+
+    return { fields: obj, segData };
+  }
+
+  analyzeBtn.addEventListener('click', async () => {
+    const apiKey = apiKeyInput.value.trim();
+    const linhaRaw = linhaInput.value.trim();
+
+    if (!apiKey || !workbookData || !linhaRaw) return;
+
+    resultWrap.innerHTML = `
+      <div class="result-card">
+        <div class="loading-wrap">
+          <div class="spinner"></div>
+          <div class="loading-text">Lendo o plano...</div>
+        </div>
+      </div>`;
+
+    const planData = extractPlanData(linhaRaw);
+
+    if (!planData) {
+      showError(`Linha "${linhaRaw}" não encontrada no plano. Verifique o ID e tente novamente.`);
+      return;
+    }
+
+    const planJson = JSON.stringify(planData.fields, null, 2);
+
+    const systemPrompt = `Você é um assistente especializado em leitura de planos de mídia táticos para implementação em plataformas digitais (Meta e TikTok).
+
+Receberá os dados de uma linha do plano em JSON e deve retornar um resumo claro para implementação seguindo estas regras:
+
+CONFIGURAÇÃO INICIAL DE CAMPANHA: sempre usar esse campo para definir o objetivo de campanha, nunca o OBJETIVO GERAL.
+ID ÚNICO: identificador da linha = ad group na plataforma.
+PLATAFORMA: Meta ou TikTok.
+PUBLISHER: onde vai rodar (só Instagram, Instagram+Facebook etc).
+FORMATO: formato do anúncio (Feed+Stories+Reels, In-Feed etc).
+OBJETIVO GERAL: usar só para contexto, nunca para configuração.
+ASSET SOURCE DETALHADO: tipo do asset (DMI, Advocacy, Medvocacy etc).
+DETALHAMENTO CRIATIVO: Dark Post ou Collab.
+TIPOS DE SEGMENTAÇÃO: 1st Party ou 2nd Party.
+SEGMENTAÇÃO: informar o nome e alertar para buscar na aba SEGMENTAÇÃO DIGITAL.
+BRAND LIFT: se SIM, implementar pausado + data real de início = data início + 2 dias.
+INÍCIO E TÉRMINO: datas. Se BL, calcular data real de início.
+DIAS: ignorar isoladamente. Se BL, dias serão menores automaticamente — não apontar como erro.
+STATUS DE IMPLEMENTAÇÃO: ignorar completamente.
+FORMATO DE OTIMIZAÇÃO / COMPRA DEAL: Leilão ou Reserva.
+UNIVERSO DA SEGMENTAÇÃO: informar valor planejado e alertar para conferir na plataforma.
+FREQUÊNCIA: nunca será exata. Informar valor planejado e alertar que deve estar próximo.
+INVESTIMENTO TOTAL LÍQUIDO: sempre esse campo, nunca o valor do mês.
+
+Retorne APENAS um JSON válido, sem markdown, sem explicações fora do JSON, com essa estrutura exata:
+{
+  "linha": "",
+  "configuracao_inicial": "",
+  "plataforma": "",
+  "publisher": "",
+  "formato": "",
+  "asset_source_detalhado": "",
+  "detalhamento_criativo": "",
+  "tipos_segmentacao": "",
+  "segmentacao": "",
+  "brand_lift": "SIM ou NÃO",
+  "data_inicio_plano": "",
+  "data_inicio_real": "",
+  "data_termino": "",
+  "formato_otimizacao": "",
+  "universo_segmentacao": "",
+  "frequencia": "",
+  "investimento_total_liquido": "",
+  "alertas": [],
+  "pendencias": []
+}
+
+Se campo for TBD coloque "⏳ Pendente de definição". Se N/A coloque "Não se aplica". Nunca invente dados.`;
+
+    const userMsg = `Dados da linha do plano:\n${planJson}\n\nMe retorne o resumo para implementação.`;
+
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: 'user', parts: [{ text: userMsg }] }]
+        })
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        const msg = json?.error?.message || 'Erro na API. Verifique sua chave.';
+        showError(msg);
+        return;
+      }
+
+      const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const clean = rawText.replace(/```json|```/g, '').trim();
+
+      let parsed;
+      try {
+        parsed = JSON.parse(clean);
+      } catch {
+        // fallback: show raw
+        renderRaw(rawText);
+        return;
+      }
+
+      renderResult(parsed);
+
+    } catch (err) {
+      showError('Erro de conexão. Verifique sua chave de API e tente novamente.');
+    }
+  });
+
+  function renderResult(d) {
+    const hasBL = d.brand_lift && d.brand_lift.toUpperCase().includes('SIM');
+
+    const fields = [
+      { key: 'LINHA', val: d.linha, cls: 'highlight' },
+      { key: 'CONFIGURAÇÃO INICIAL DE CAMPANHA', val: d.configuracao_inicial },
+      { key: 'PLATAFORMA', val: d.plataforma },
+      { key: 'PUBLISHER', val: d.publisher },
+      { key: 'FORMATO', val: d.formato },
+      { key: 'ASSET SOURCE DETALHADO', val: d.asset_source_detalhado },
+      { key: 'DETALHAMENTO CRIATIVO', val: d.detalhamento_criativo },
+      { key: 'TIPOS DE SEGMENTAÇÃO', val: d.tipos_segmentacao },
+      { key: 'SEGMENTAÇÃO', val: (d.segmentacao || '') + '\n→ Buscar na aba SEGMENTAÇÃO DIGITAL', cls: '' },
+      { key: 'BRAND LIFT', val: d.brand_lift, cls: hasBL ? 'warn' : 'success' },
+      { key: 'INÍCIO (PLANO)', val: d.data_inicio_plano },
+      { key: 'DATA REAL DE INÍCIO', val: d.data_inicio_real, cls: hasBL ? 'warn' : '' },
+      { key: 'TÉRMINO', val: d.data_termino },
+      { key: 'FORMATO DE OTIMIZAÇÃO / COMPRA DEAL', val: d.formato_otimizacao },
+      { key: 'UNIVERSO DA SEGMENTAÇÃO', val: d.universo_segmentacao },
+      { key: 'FREQUÊNCIA', val: d.frequencia },
+      { key: 'INVESTIMENTO TOTAL LÍQUIDO', val: d.investimento_total_liquido, cls: 'highlight' },
+    ];
+
+    let blAlert = '';
+    if (hasBL) {
+      blAlert = `
+        <div class="alert-bl">
+          <span class="alert-bl-icon">⚠️</span>
+          <div class="alert-bl-text">
+            <strong>Brand Lift ativo</strong> — implementar pausado.<br/>
+            Data real de início: <strong>${d.data_inicio_real || 'calcular: início + 2 dias'}</strong>
+          </div>
+        </div>`;
+    }
+
+    let alertasHtml = '';
+    if (d.alertas && d.alertas.length) {
+      alertasHtml = d.alertas.map(a => `
+        <div class="alert-bl">
+          <span class="alert-bl-icon">🔔</span>
+          <div class="alert-bl-text">${a}</div>
+        </div>`).join('');
+    }
+
+    let pendenciasHtml = '';
+    if (d.pendencias && d.pendencias.length) {
+      pendenciasHtml = d.pendencias.map(p => `
+        <div class="alert-bl" style="background:rgba(239,68,68,0.08);border-color:rgba(239,68,68,0.2)">
+          <span class="alert-bl-icon">⏳</span>
+          <div class="alert-bl-text" style="color:var(--danger)">${p}</div>
+        </div>`).join('');
+    }
+
+    const fieldsHtml = fields.map(f => `
+      <div class="result-field">
+        <div class="result-key">${f.key}</div>
+        <div class="result-val ${f.cls || ''}">${f.val || '—'}</div>
+      </div>`).join('');
+
+    resultWrap.innerHTML = `
+      <div class="result-card">
+        <div class="result-header">
+          <span class="result-title">Resumo para implementação — ${d.linha || linhaInput.value}</span>
+          <button class="result-copy" id="copyBtn">Copiar</button>
+        </div>
+        ${blAlert}
+        ${alertasHtml}
+        ${pendenciasHtml}
+        <div class="result-body">
+          ${fieldsHtml}
+        </div>
+      </div>`;
+
+    document.getElementById('copyBtn').addEventListener('click', () => {
+      const text = fields.map(f => `${f.key}: ${f.val || '—'}`).join('\n');
+      navigator.clipboard.writeText(text).then(() => {
+        document.getElementById('copyBtn').textContent = 'Copiado ✓';
+        setTimeout(() => document.getElementById('copyBtn').textContent = 'Copiar', 2000);
+      });
+    });
+  }
+
+  function renderRaw(text) {
+    resultWrap.innerHTML = `
+      <div class="result-card">
+        <div class="result-header">
+          <span class="result-title">Resposta da IA</span>
+        </div>
+        <div class="raw-response">${text}</div>
+      </div>`;
+  }
+
+  function showError(msg) {
+    resultWrap.innerHTML = `<div class="error-box">❌ ${msg}</div>`;
+  }
+</script>
+</body>
+</html>
